@@ -29,6 +29,20 @@ class ArticleController extends Controller {
     ctx.logger.info(data.rows.length);
     ctx.body = data.rows;
   }
+  async vote() {
+    const { ctx } = this;
+    ctx.validate({
+      id: { type: 'int', required: true, desc: 'id' },
+      type: { type: 'int', desc: '投票类型' },
+    });
+    const { query, body } = ctx.request;
+    const params = ctx.params;
+    const data = await ctx.model.Article.findOne({
+      where: params,
+      plain: true,
+    });
+    ctx.body = data;
+  }
   async add() {
     const { ctx } = this;
     ctx.validate({

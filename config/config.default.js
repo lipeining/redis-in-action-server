@@ -22,6 +22,9 @@ module.exports = appInfo => {
   const userConfig = {
     // myAppName: 'egg',
   };
+  config.paths = {
+    upload: `/raid/${appInfo.name}/upload`,
+  };
   config.cluster = {
     listen: {
       port: 7001,
@@ -46,14 +49,15 @@ module.exports = appInfo => {
     host: 'localhost',
     port: 3306,
     database: 'action',
-    username: 'root',
-    password: 'root',
+    username: 'duoyi',
+    password: 'DUOYIqaz123',
   };
   config.redis = {
     client: {
       host: 'localhost',
       port: 6379,
-      password: 'admin',
+      // password: 'admin', // docker
+      password: '',
       db: 8,
     },
   };

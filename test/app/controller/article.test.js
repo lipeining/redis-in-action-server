@@ -28,31 +28,31 @@ describe('test/app/controller/article.test.js', () => {
         title: 'article-1',
         link: 'http://localhost:7001/articles/article-1',
         content: 'some words',
-        createUserId: user.userId,
+        createUserId: user.id,
       })
       .expect(200);
     article = resp.body;
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should GET /articles/:articleId', async () => {
+  it('should GET /articles/:id', async () => {
     const resp = await app
       .httpRequest()
-      .get(`/articles/${article.articleId}`)
+      .get(`/articles/${article.id}`)
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should PUT /articles/:articleId', async () => {
+  it('should PUT /articles/:id', async () => {
     const resp = await app
       .httpRequest()
-      .put(`/articles/${article.articleId}`)
+      .put(`/articles/${article.id}`)
       .send({ title: 'article1-edit' })
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should DELETE /articles/:articleId', async () => {
+  it('should DELETE /articles/:id', async () => {
     const resp = await app
       .httpRequest()
-      .delete(`/articles/${article.articleId}`)
+      .delete(`/articles/${article.id}`)
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });

@@ -20,25 +20,25 @@ describe('test/app/controller/user.test.js', () => {
     user = resp.body;
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should GET /users/:userId', async () => {
+  it('should GET /users/:id', async () => {
     const resp = await app
       .httpRequest()
-      .get(`/users/${user.userId}`)
+      .get(`/users/${user.id}`)
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should PUT /users/:userId', async () => {
+  it('should PUT /users/:id', async () => {
     const resp = await app
       .httpRequest()
-      .put(`/users/${user.userId}`)
+      .put(`/users/${user.id}`)
       .send({ nickName: 'test1-edit' })
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });
-  it('should DELETE /users/:userId', async () => {
+  it('should DELETE /users/:id', async () => {
     const resp = await app
       .httpRequest()
-      .delete(`/users/${user.userId}`)
+      .delete(`/users/${user.id}`)
       .expect(200);
     console.log(JSON.stringify(resp.body, null, 2));
   });

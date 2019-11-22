@@ -4,14 +4,14 @@ exports.sequelize = {
   host: 'localhost',
   port: 3306,
   database: 'actiontest',
-  username: 'root',
-  password: 'root',
+  username: 'duoyi',
+  password: 'DUOYIqaz123',
 };
 exports.redis = {
   client: {
     host: 'localhost',
     port: 6379,
-    password: 'admin',
+    password: '',
     db: 6,
   },
 };
