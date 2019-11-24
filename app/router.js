@@ -21,4 +21,11 @@ module.exports = app => {
   router.put('/articles/:id', controller.article.edit);
   router.put('/articles/:id/vote', controller.article.vote);
   router.delete('/articles/:id', controller.article.del);
+  // article
+  router.get('/tags', controller.tag.list);
+  router.post('/tags', controller.tag.add);
+  router.get('/tags/:id', controller.tag.info);
+  router.put('/tags/:id', controller.tag.edit);
+  router.put('/tags/:id/vote', controller.tag.vote);
+  router.delete('/tags/:id', controller.tag.ping);
 };

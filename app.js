@@ -2,6 +2,10 @@
 
 module.exports = async app => {
   app.beforeStart(async () => {
-    await app.model.sync({ force: app.config.env === 'unittest' });
+    const force = app.config.env === 'unittest';
+    await app.model.sync({ force });
+    if (force) {
+      await app.redis.flushdb();
+    }
   });
 };
