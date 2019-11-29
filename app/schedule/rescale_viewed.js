@@ -10,3 +10,6 @@ async function run() {
   await app.redis.zremrangebyrank('viewed:', 0, -20001);
   await app.redis.zinterstore('viewed:', { viewed: 0.5 });
 }
+module.exports = app => {
+
+};

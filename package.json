@@ -15,7 +15,8 @@
     "egg-valparams": "^1.2.8",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.15",
-    "mysql2": "^2.0.0"
+    "mysql2": "^2.0.0",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "autod": "^3.0.1",
