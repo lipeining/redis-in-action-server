@@ -16,6 +16,7 @@
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.15",
     "mysql2": "^2.0.0",
+    "redlock": "^4.1.0",
     "uuid": "^3.3.3"
   },
   "devDependencies": {

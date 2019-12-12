@@ -97,6 +97,19 @@ class Redlock extends EventEmitter {
     //   server.defineCommand('lock');
     // }
   }
+  async _initScript() {
+    this.scriptMap = {};
+    for (const server of this.servers) {
+      for (const script of [ 'lockScript', 'unlockScript', 'extendScript' ]) {
+        const scriptSha = await server.script('load', this[script]);
+        // if (!this.scriptMap[server.name]) {
+        //   this.scriptMap[server.name] = {};
+        // }
+        // this.scriptMap[server.name][script] = scriptSha;
+        server[script] = scriptSha;
+      }
+    }
+  }
   _random() {
     return crypto.randomBytes(16).toString('hex');
   }
@@ -111,10 +124,21 @@ class Redlock extends EventEmitter {
     // create a new lock
     if (value === null) {
       value = this._random();
+      // request = server => {
+      //   return server.eval(
+      //     ...[
+      //       this.lockScript,
+      //       resource.length,
+      //       ...resource,
+      //       value,
+      //       ttl,
+      //     ]
+      //   );
+      // };
       request = server => {
-        return server.eval(
+        return server.evalsha(
           ...[
-            this.lockScript,
+            server.lockScript,
             resource.length,
             ...resource,
             value,
@@ -123,10 +147,21 @@ class Redlock extends EventEmitter {
         );
       };
     } else {
+      // request = server => {
+      //   return server.eval(
+      //     ...[
+      //       this.extendScript,
+      //       resource.length,
+      //       ...resource,
+      //       value,
+      //       ttl,
+      //     ]
+      //   );
+      // };
       request = server => {
-        return server.eval(
+        return server.evalsha(
           ...[
-            this.extendScript,
+            server.extendScript,
             resource.length,
             ...resource,
             value,
@@ -166,10 +201,9 @@ class Redlock extends EventEmitter {
         // remove this lock from servers that voted for it
         await lock.unlock();
         // RETRY
-        if (this.retryCount === -1) {
-          await BBPromise.delay(Math.max(0, this.retryDelay + Math.floor((Math.random() * 2 - 1) * this.retryJitter)));
-        }
+        await BBPromise.delay(Math.max(0, this.retryDelay + Math.floor((Math.random() * 2 - 1) * this.retryJitter)));
       } catch (err) {
+        console.log(err);
         this.emit('clientError', err);
       } finally {
         //
@@ -186,8 +220,10 @@ class Redlock extends EventEmitter {
     const quorum = Math.floor(this.servers.length / 2) + 1;
     try {
       const promises = this.servers.map(server => {
-        const args = [ this.unlockScript, resource.length, ...resource, lock.value ];
-        return server.eval(...args);
+        // const args = [ this.unlockScript, resource.length, ...resource, lock.value ];
+        // return server.eval(...args);
+        const args = [ server.unlockScript, resource.length, ...resource, lock.value ];
+        return server.evalsha(...args);
       });
       // 可以考虑 Promise.all Promise.map
       voteResults = await Promise.all(promises);
@@ -204,13 +240,22 @@ class Redlock extends EventEmitter {
       }
       return Promise.reject(new LockError('Unable to fully release the lock on resource "' + lock.resource + '".'));
     } catch (err) {
+      console.log(err);
       this.emit('clientError', err);
     } finally {
       //
     }
   }
-  async extend() {
-
+  async extend(lock, ttl) {
+    // the lock has expired
+    if (lock.expiration < Date.now()) {
+      return Promise.reject(new LockError('Cannot extend lock on resource "' + lock.resource + '" because the lock has already expired.', 0));
+    }
+    // extend the lock
+    const extension = await this.lock(lock.resource, lock.value, ttl);
+    lock.value = extension.value;
+    lock.expiration = extension.expiration;
+    return lock;
   }
 }
 class RedlockService extends Service {
@@ -220,6 +265,7 @@ class RedlockService extends Service {
   }
   async lock(values, options = {}) {
     const { resource, value, ttl } = values;
+    await this.redlock._initScript();
     const lock = await this.redlock.lock(resource, value || null, ttl || 1000);
     return lock;
   }
@@ -227,9 +273,78 @@ class RedlockService extends Service {
     const { lock } = values;
     return lock.unlock();
   }
-  async extend() {
-
+  async extend(values, options = {}) {
+    const { lock, ttl } = values;
+    return lock.extend(ttl);
   }
 }
 
 module.exports = RedlockService;
+
+// -----------------
+// this.redis.evalsha(this.popMessage_sha1, 2, `${this.redisns}${options.qname}`, q.ts, this._handleReceivedMessage(cb));
+// -----------------
+// const script_popMessage = `local msg = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", KEYS[2], "LIMIT", "0", "1")
+// if #msg == 0 then
+//   return {}
+// end
+// redis.call("HINCRBY", KEYS[1] .. ":Q", "totalrecv", 1)
+// local mbody = redis.call("HGET", KEYS[1] .. ":Q", msg[1])
+// local rc = redis.call("HINCRBY", KEYS[1] .. ":Q", msg[1] .. ":rc", 1)
+// local o = {msg[1], mbody, rc}
+// if rc==1 then
+//   table.insert(o, KEYS[2])
+// else
+//   local fr = redis.call("HGET", KEYS[1] .. ":Q", msg[1] .. ":fr")
+//   table.insert(o, fr)
+// end
+// redis.call("ZREM", KEYS[1], msg[1])
+// redis.call("HDEL", KEYS[1] .. ":Q", msg[1], msg[1] .. ":rc", msg[1] .. ":fr")
+// return o`;
+//       const script_receiveMessage = `local msg = redis.call("ZRANGEBYSCORE", KEYS[1], "-inf", KEYS[2], "LIMIT", "0", "1")
+// if #msg == 0 then
+//   return {}
+// end
+// redis.call("ZADD", KEYS[1], KEYS[3], msg[1])
+// redis.call("HINCRBY", KEYS[1] .. ":Q", "totalrecv", 1)
+// local mbody = redis.call("HGET", KEYS[1] .. ":Q", msg[1])
+// local rc = redis.call("HINCRBY", KEYS[1] .. ":Q", msg[1] .. ":rc", 1)
+// local o = {msg[1], mbody, rc}
+// if rc==1 then
+//   redis.call("HSET", KEYS[1] .. ":Q", msg[1] .. ":fr", KEYS[2])
+//   table.insert(o, KEYS[2])
+// else
+//   local fr = redis.call("HGET", KEYS[1] .. ":Q", msg[1] .. ":fr")
+//   table.insert(o, fr)
+// end
+// return o`;
+//       const script_changeMessageVisibility = `local msg = redis.call("ZSCORE", KEYS[1], KEYS[2])
+// if not msg then
+//   return 0
+// end
+// redis.call("ZADD", KEYS[1], KEYS[3], KEYS[2])
+// return 1`;
+//       this.redis.script("load", script_popMessage, (err, resp) => {
+//           if (err) {
+//               console.log(err);
+//               return;
+//           }
+//           this.popMessage_sha1 = resp;
+//           this.emit("scriptload:popMessage");
+//       });
+//       this.redis.script("load", script_receiveMessage, (err, resp) => {
+//           if (err) {
+//               console.log(err);
+//               return;
+//           }
+//           this.receiveMessage_sha1 = resp;
+//           this.emit("scriptload:receiveMessage");
+//       });
+//       this.redis.script("load", script_changeMessageVisibility, (err, resp) => {
+//           if (err) {
+//               console.log(err);
+//               return;
+//           }
+//           this.changeMessageVisibility_sha1 = resp;
+//           this.emit('scriptload:changeMessageVisibility');
+//       });
